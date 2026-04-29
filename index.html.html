@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Kundan Traders Billing</title>
+
+<style>
+body { font-family: Arial; background:#eef2f3; padding:20px; }
+h1 { text-align:center; }
+
+.box {
+    background:white;
+    padding:15px;
+    margin-bottom:15px;
+    box-shadow:0 0 10px #ccc;
+}
+
+table {
+    width:100%;
+    border-collapse:collapse;
+    background:white;
+}
+
+th { background:#2c3e50; color:white; }
+
+th,td {
+    border:1px solid #ddd;
+    padding:8px;
+    text-align:center;
+}
+
+.qty { width:60px; }
+
+button {
+    padding:10px 15px;
+    background:#2c3e50;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Kundan Traders Billing</h1>
+
+<div class="box">
+Customer: <input id="cust">
+Mobile: <input id="mobile"><br><br>
+GST No: <input id="gstno"><br><br>
+Vehicle No: <input id="vehicle"><br><br>
+
+Invoice: <b id="invoice"></b><br>
+Date: <b id="date"></b>
+</div>
+
+<button onclick="addRow()">➕ Add Item</button>
+<button onclick="resetQty()">🔄 Reset Qty</button>
+
+<br><br>
+<input type="text" id="search" placeholder="🔍 Search Item..." oninput="searchItem()" style="padding:8px; width:200px;">
+<br><br>
+
+<table id="bill">
+<tr>
+<th>Item</th>
+<th>Rate</th>
+<th>Qty</th>
+<th>GST %</th>
+<th>GST Amt</th>
+<th>Total</th>
+</tr>
+</table>
+
+<br>
+
+<div class="box">
+Subtotal: ₹ <span id="subtotal">0</span><br>
+GST: ₹ <span id="gst">0</span><br>
+<b>Grand Total: ₹ <span id="grand">0</span></b>
+</div>
+
+<button onclick="generateBill()">Print Bill</button>
+
+<script>
+
+// FULL ITEMS (UNCHANGED)
+let items = [
+["RAFTER 21 FEET 6400 MM",1496],["RAFTER 20 FEET 6000 MM",1402.5],
+["RAFTER 17 FEET 5000 MM",1168.75],["RAFTER 12 FEET 3800 MM",888.25],
+["PURLIN 21 FEET 6400 MM",1167.90],["PURLIN 20 FEET 6000 MM",1096.50],
+["PURLIN 17 FEET 5000 MM",913.75],["PURLIN 12 FEET 3800 MM",694.45],
+["END CLAMP",24],["MID CLAMP",24],["BASE PLATE",88],
+["NUT BOLTS IN KG",110],["FASTNER 10 MM",11],
+["4G 17MM 2 MTR EARTHING ROD",460],["4G 17MM 1 MTR EARTHING ROD",300],
+["BFC BAG 15 KG",60],["MC4 CONNECTOR",24],["MULTI SPIKE LA",400],
+["ACDB SINGLE PHASE 32A",950],["DCDB 600V",950],
+["ACDB PURE HAVELLS",1150],["DCDB HAVELLS",1150],
+["HPL AC WIRE 2.5 SQMM mtr",32],["HPL AC WIRE 4 SQMM",46],
+["HPL AC WIRE 6 SQMM",76],["HPL AC WIRE 10 SQMM",114],
+["HPL DC WIRE 4 SQMM",44],["POLYCAB AC WIRE 2.5 SQMM",36],
+["POLYCAB AC WIRE 4 SQMM",54],["POLYCAB DC WIRE 4 SQMM",52],
+["EARTHING WIRE 16 SQMM",60],["EARTHING WIRE 6 SQMM",24],
+["PVC PIPE 25MM",65],["PVC ELBOW 25MM",5],
+["PVC JUNCTION BOX",15],["PVC TEE 25MM",0],
+["CABLE TIE 300MM",140],["CABLE TRAY",100],["PVC SADDLE",140],
+["FLEXIBLE PIPE",30],["FLEXIBLE PIPE BUNDLE",280],
+["J BOLT FLANGE NUT",20],["TAPE",10],["BROWN TAPE",80],
+["PVC SHEET",22],
+
+["POLYCAB INVERTER 3 KW",15500],["POLYCAB INVERTER 4 KW",20200],
+["POLYCAB INVERTER 5 KW",26500],["POLYCAB INVERTER 6 KW",27000],
+["UTL INVERTER 3.3 KW",14800],["UTL INVERTER 5 KW",24500],
+["MICROTEK INVERTER 3 KW",16200],["MICROTEK INVERTER 5 KW",26500],
+["LUMINOUS INVERTER 3 KW",17200],["LUMINOUS INVERTER 5 KW",15500],
+["HAVELLS INVERTER 3 KW",18500],["HAVELLS INVERTER 4 KW",28600],
+["HAVELLS INVERTER 5 KW",31800],
+["VESOLE ONGRID INVERTER 3.6 KW",14300],
+["VESOLE ONGRID INVERTER 4.2 KW",19000],
+["VESOLE ONGRID INVERTER 5.4 KW",23000],
+
+["SECURE NET MTR SP",1650],["SECURE NET MTR TP",5500],
+["HPL NET MTR SP",0],["HPL NET MTR TP",4600],
+
+["TATA KIT 3KW",125500],["TATA KIT 4KW",0],["TATA KIT 5KW",0],
+
+["TATA KIT WITH POLYCAB INVERTER 3 KW 595W 6 PC",117500],
+["TATA KIT WITH POLYCAB INVERTER 4 KW 595W 7 PC",138000],
+["TATA KIT WITH POLYCAB INVERTER 5 KW 595W 9 PC",178000],
+
+["ADANI TOPCON 620 DCR",16430],
+["LITHIUM BATTERY 25.6 V 100 AH",28000],
+["LITHIUM BATTERY 48 V 100 AH",43000],
+["LITHIUM BATTERY 51 V 100 AH",47000],
+
+["ADANI TOPCON 555 DCR",0],["ADANI TOPCON 545 DCR",0],
+["ADANI TOPCON 540 DCR",0],
+["LUMINOUS PANEL 550 DCR",0],["LUMINOUS PANEL 540 DCR",0],
+["TATA PANEL 590 DCR",0],
+["UTL PANEL 525 DCR",0],["UTL PANEL 590 DCR",0],
+["UTL PANEL 540 DCR",0],
+["LOOM PANEL 600 DCR",0],["WAAREE PANEL 540 DCR",0],
+["PRIMEAR PANEL 540 DCR",0],["PRIMEAR PANEL 610 DCR",0],
+["ADANI TOPCON 625 NDCR",10625],["ADANI TOPCON 610 NDCR",0],
+["TATA PANEL 580 NDCR",0],
+["PRIMIER PANEL 610 NDCR",0],["PRIMIER PANEL 580 NDCR",0]
+];
+
+// LOAD
+let table = document.getElementById("bill");
+
+items.forEach(i=>{
+table.innerHTML += `
+<tr>
+<td>${i[0]}</td>
+<td contenteditable="true">${i[1]}</td>
+<td><input type="number" class="qty" oninput="calc()"></td>
+<td contenteditable="true" class="gstp" oninput="calc()">0</td>
+<td class="gstamt">0</td>
+<td class="total">0</td>
+</tr>`;
+});
+
+// DATE
+let d = new Date();
+date.innerText = d.toLocaleDateString();
+invoice.innerText = "INV"+Math.floor(Math.random()*10000);
+
+// CALC
+function calc(){
+let rows = document.querySelectorAll("#bill tr");
+let subtotal=0, gstTotal=0;
+
+for(let i=1;i<rows.length;i++){
+
+let item = rows[i].children[0].innerText.toLowerCase();
+let rate = parseFloat(rows[i].children[1].innerText)||0;
+let qty = parseFloat(rows[i].querySelector(".qty").value)||0;
+
+let gstCell = rows[i].children[3];
+let gst = parseFloat(gstCell.innerText);
+
+if(isNaN(gst) || gst === 0){
+    gst = 18;
+    if(/inverter|dcr|ndcr|tata|battery|panel/i.test(item)){
+        gst = 5;
+    }
+    gstCell.innerText = gst;
+}
+
+let amount = rate * qty;
+let gstAmt = amount * gst/100;
+let total = amount + gstAmt;
+
+rows[i].children[4].innerText = gstAmt.toFixed(2);
+rows[i].children[5].innerText = total.toFixed(2);
+
+subtotal += amount;
+gstTotal += gstAmt;
+}
+
+subtotal.innerText = subtotal.toFixed(2);
+gst.innerText = gstTotal.toFixed(2);
+grand.innerText = (subtotal+gstTotal).toFixed(2);
+}
+
+// RESET
+function resetQty(){
+document.querySelectorAll(".qty").forEach(i=>i.value=0);
+calc();
+}
+
+// SEARCH
+function searchItem(){
+let input = document.getElementById("search").value.toLowerCase();
+let rows = document.querySelectorAll("#bill tr");
+for(let i=1;i<rows.length;i++){
+let item = rows[i].children[0].innerText.toLowerCase();
+rows[i].style.display = item.includes(input) ? "" : "none";
+}
+}
+
+// ADD ITEM
+function addRow(){
+table.innerHTML += `
+<tr>
+<td contenteditable="true"></td>
+<td contenteditable="true">0</td>
+<td><input type="number" class="qty" oninput="calc()"></td>
+<td contenteditable="true" class="gstp" oninput="calc()">0</td>
+<td class="gstamt">0</td>
+<td class="total">0</td>
+</tr>`;
+}
+
+// PRINT FIXED
+function generateBill(){
+let rows = document.querySelectorAll("#bill tr");
+
+let html = `
+<h2>Kundan Traders</h2>
+<p>Customer: ${cust.value}</p>
+<p>Mobile: ${mobile.value}</p>
+<p>GST No: ${gstno.value}</p>
+<p>Vehicle No: ${vehicle.value}</p>
+<p>Invoice: ${invoice.innerText}</p>
+<p>Date: ${date.innerText}</p>
+
+<table border="1" width="100%">
+<tr>
+<th>Item</th><th>Rate</th><th>Qty</th><th>GST%</th><th>Total</th>
+</tr>
+`;
+
+for(let i=1;i<rows.length;i++){
+let qty = rows[i].querySelector(".qty").value;
+
+if(qty>0){
+html += `
+<tr>
+<td>${rows[i].children[0].innerText}</td>
+<td>${rows[i].children[1].innerText}</td>
+<td>${qty}</td>
+<td>${rows[i].children[3].innerText}%</td>
+<td>${rows[i].children[5].innerText}</td>
+</tr>`;
+}
+}
+
+html += `
+</table>
+
+<h3>Total ₹ ${grand.innerText}</h3>
+
+<h3>Bank Details</h3>
+<p>Kundan Traders</p>
+<p>A/C: 237605000776</p>
+<p>IFSC: ICIC0002376</p>
+<p>ICICI Bank</p>
+<p>UPI: 9140526207@ptsbi</p>
+`;
+
+let win = window.open("");
+win.document.write(html);
+win.document.close();
+win.print();
+}
+
+</script>
+
+</body>
+</html>
